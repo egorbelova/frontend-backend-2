@@ -322,6 +322,8 @@ app.get('/api/products', (req, res) => {
  *   get:
  *     summary: Получить товар по id
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -346,6 +348,8 @@ app.get('/api/products/:id', requireAuth, (req, res) => {
  *   put:
  *     summary: Обновить параметры товара
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -393,6 +397,8 @@ app.put('/api/products/:id', requireAuth, (req, res) => {
  *   delete:
  *     summary: Удалить товар
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
