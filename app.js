@@ -1,11 +1,13 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
 const app = express();
 const port = 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 
 const swaggerOptions = {
   definition: {
@@ -13,7 +15,8 @@ const swaggerOptions = {
     info: {
       title: 'API Auth & Products',
       version: '1.0.0',
-      description: 'API для регистрации, авторизации и управления товарами',
+      description:
+        'API для регистрации, авторизации (JWT) и управления товарами',
     },
     servers: [
       {
@@ -21,6 +24,16 @@ const swaggerOptions = {
         description: 'local server',
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Токен, полученный при успешном POST /api/auth/login',
+        },
+      },
+    },
   },
   apis: ['./app.js'],
 };
@@ -53,6 +66,23 @@ async function hashPassword(password) {
 
 async function verifyPassword(password, passwordHash) {
   return bcrypt.compare(password, passwordHash);
+}
+
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res
+      .status(401)
+      .json({ error: 'Authorization header with Bearer token required' });
+  }
+  const token = authHeader.slice(7);
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'invalid or expired token' });
+  }
 }
 
 // Swagger
@@ -155,7 +185,15 @@ app.post('/api/auth/register', async (req, res) => {
  *                 example: password123
  *     responses:
  *       200:
- *         description: Успешная авторизация
+ *         description: "Успешная авторизация. В ответе accessToken — JWT для заголовка Authorization: Bearer <token>"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                   description: JWT access-токен (срок жизни 15 мин)
  *       400:
  *         description: Отсутствуют обязательные поля
  *       401:
@@ -172,13 +210,38 @@ app.post('/api/auth/login', async (req, res) => {
   if (!user) return;
   const isAuthenticated = await verifyPassword(password, user.hashedPassword);
   if (isAuthenticated) {
-    res.status(200).json({ login: true });
+    const accessToken = jwt.sign(
+      { sub: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '15m' },
+    );
+    res.status(200).json({ accessToken });
   } else {
     res.status(401).json({ error: 'not authenticated' });
   }
 });
 
-// ==================== PRODUCTS ====================
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Текущий пользователь
+ *     description: "Возвращает данные пользователя по JWT (заголовок Authorization: Bearer <token>)"
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Данные пользователя (без пароля)
+ *       401:
+ *         description: Токен отсутствует или недействителен
+ */
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  const user = users.find((u) => u.id === req.user.sub);
+  if (!user) return res.status(404).json({ error: 'user not found' });
+  const { hashedPassword, ...publicUser } = user;
+  res.status(200).json(publicUser);
+});
 
 /**
  * @swagger
@@ -271,7 +334,7 @@ app.get('/api/products', (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.get('/api/products/:id', (req, res) => {
+app.get('/api/products/:id', requireAuth, (req, res) => {
   const product = findProductById(req.params.id, res);
   if (!product) return;
   res.status(200).json(product);
@@ -313,7 +376,7 @@ app.get('/api/products/:id', (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.put('/api/products/:id', (req, res) => {
+app.put('/api/products/:id', requireAuth, (req, res) => {
   const product = findProductById(req.params.id, res);
   if (!product) return;
   const { title, category, description, price } = req.body;
@@ -342,7 +405,7 @@ app.put('/api/products/:id', (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', requireAuth, (req, res) => {
   const index = products.findIndex((p) => p.id === req.params.id);
   if (index === -1) {
     return res.status(404).json({ error: 'product not found' });

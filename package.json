@@ -1,7 +1,7 @@
 {
   "name": "frontend-backend-2",
   "version": "1.0.0",
-  "description": "Практическое занятие 7 — базовые методы аутентификации, API пользователей и товаров",
+  "description": "Практические занятия 7–8 — аутентификация, JWT, API пользователей и товаров",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -17,6 +17,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.0.4",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0"
