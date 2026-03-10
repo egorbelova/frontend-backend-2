@@ -100,8 +100,8 @@ export default function ProductsPage() {
             {isAuthed ? (
               <button
                 className='btn'
-                onClick={() => {
-                  authStorage.clearToken();
+                onClick={async () => {
+                  await api.logout();
                   setIsAuthed(false);
                 }}
               >

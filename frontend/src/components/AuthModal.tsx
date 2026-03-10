@@ -148,7 +148,11 @@ export default function AuthModal({
             </label>
             {error ? <div className='alert'>{error}</div> : null}
             <div className='authModalCard__actions'>
-              <button className='btn btn--primary' type='submit' disabled={loading}>
+              <button
+                className='btn btn--primary'
+                type='submit'
+                disabled={loading}
+              >
                 {loading ? 'Logging in...' : 'Login'}
               </button>
               <button className='btn' type='button' onClick={onClose}>
@@ -205,7 +209,11 @@ export default function AuthModal({
             </label>
             {error ? <div className='alert'>{error}</div> : null}
             <div className='authModalCard__actions'>
-              <button className='btn btn--primary' type='submit' disabled={loading}>
+              <button
+                className='btn btn--primary'
+                type='submit'
+                disabled={loading}
+              >
                 {loading ? 'Creating account...' : 'Register'}
               </button>
               <button className='btn' type='button' onClick={onClose}>

@@ -1,6 +1,7 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -90,7 +91,13 @@ const processProduct = (product) => {
 };
 
 app.use(express.json());
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'] }));
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    credentials: true,
+  }),
+);
 
 async function hashPassword(password) {
   const rounds = 10;
@@ -144,6 +151,29 @@ function extractRefreshTokenFromHeaders(req) {
   }
 
   return null;
+}
+
+const REFRESH_COOKIE_NAME = 'refreshToken';
+const REFRESH_COOKIE_MAX_AGE_DAYS = 7;
+const isProduction = process.env.NODE_ENV === 'production';
+
+function setRefreshCookie(res, token) {
+  res.cookie(REFRESH_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
+    maxAge: REFRESH_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+    path: '/',
+  });
+}
+
+function clearRefreshCookie(res) {
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
+    path: '/',
+  });
 }
 
 // Swagger: описание API
@@ -337,7 +367,8 @@ app.post('/api/auth/login', async (req, res) => {
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
   refreshTokens.add(refreshToken);
-  res.status(200).json({ accessToken, refreshToken });
+  setRefreshCookie(res, refreshToken);
+  res.status(200).json({ accessToken });
 });
 
 /**
@@ -369,9 +400,10 @@ app.post('/api/auth/login', async (req, res) => {
  *       401: { description: Refresh-токен невалиден/просрочен/не найден }
  */
 app.post('/api/auth/refresh', (req, res) => {
-  const refreshToken = extractRefreshTokenFromHeaders(req);
+  const refreshToken =
+    req.cookies?.[REFRESH_COOKIE_NAME] ?? extractRefreshTokenFromHeaders(req);
   if (!refreshToken) {
-    return res.status(400).json({ error: 'refreshToken header is required' });
+    return res.status(400).json({ error: 'refreshToken is required (cookie or header)' });
   }
 
   if (!refreshTokens.has(refreshToken)) {
@@ -387,11 +419,8 @@ app.post('/api/auth/refresh', (req, res) => {
     const newAccessToken = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
     refreshTokens.add(newRefreshToken);
-
-    return res.status(200).json({
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-    });
+    setRefreshCookie(res, newRefreshToken);
+    return res.status(200).json({ accessToken: newAccessToken });
   } catch (err) {
     refreshTokens.delete(refreshToken);
     return res.status(401).json({ error: 'Invalid or expired refresh token' });
@@ -416,6 +445,13 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   if (!user) return res.status(404).json({ error: 'user not found' });
   const { hashedPassword, ...publicUser } = user;
   res.status(200).json(publicUser);
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const token = req.cookies?.[REFRESH_COOKIE_NAME];
+  if (token) refreshTokens.delete(token);
+  clearRefreshCookie(res);
+  res.status(204).send();
 });
 
 /**

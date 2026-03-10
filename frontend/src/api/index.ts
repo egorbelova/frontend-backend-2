@@ -18,22 +18,23 @@ export interface LoginResponse {
 export type CreateProductDto = Omit<Product, 'id'>;
 export type UpdateProductDto = Partial<CreateProductDto>;
 
-const AUTH_TOKEN_KEY = 'accessToken';
+const AUTH_ACCESS_KEY = 'accessToken';
 
 export const authStorage = {
   getToken(): string | null {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    return localStorage.getItem(AUTH_ACCESS_KEY);
   },
   setToken(token: string) {
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    localStorage.setItem(AUTH_ACCESS_KEY, token);
   },
   clearToken() {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_ACCESS_KEY);
   },
 };
 
 const apiClient = axios.create({
   baseURL: '/api',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -42,6 +43,7 @@ const apiClient = axios.create({
 
 const uploadClient = axios.create({
   baseURL: '/api',
+  withCredentials: true,
 });
 
 const attachAuth = (config: InternalAxiosRequestConfig) => {
@@ -56,6 +58,51 @@ const attachAuth = (config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.request.use(attachAuth);
 uploadClient.interceptors.request.use(attachAuth);
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
+      if (originalRequest.url?.includes('/auth/refresh')) {
+        authStorage.clearToken();
+        return Promise.reject(error);
+      }
+
+      originalRequest._retry = true;
+
+      try {
+        const { accessToken: newAccess } = await refreshTokens();
+        authStorage.setToken(newAccess);
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+        return apiClient(originalRequest);
+      } catch (refreshErr) {
+        authStorage.clearToken();
+        return Promise.reject(refreshErr);
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
+async function refreshTokens(): Promise<{ accessToken: string }> {
+  const { data } = await axios.post<{ accessToken: string }>(
+    '/api/auth/refresh',
+    {},
+    {
+      baseURL: '',
+      withCredentials: true,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
+  return data;
+}
+
 export const api = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
     const response = await apiClient.post('/auth/login', { email, password });
@@ -67,14 +114,36 @@ export const api = {
     password: string;
     first_name: string;
     last_name: string;
-  }): Promise<{ id: string; email: string; first_name: string; last_name: string }> => {
+  }): Promise<{
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+  }> => {
     const response = await apiClient.post('/auth/register', payload);
     return response.data;
   },
 
-  me: async (): Promise<{ id: string; email: string; first_name: string; last_name: string }> => {
+  me: async (): Promise<{
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+  }> => {
     const response = await apiClient.get('/auth/me');
     return response.data;
+  },
+
+  logout: async (): Promise<void> => {
+    await axios.post(
+      '/api/auth/logout',
+      {},
+      {
+        baseURL: '',
+        withCredentials: true,
+      },
+    );
+    authStorage.clearToken();
   },
 
   uploadPhoto: async (file: File): Promise<{ url: string }> => {
