@@ -1,0 +1,169 @@
+@use '../variables.scss' as *;
+@use './mixins' as *;
+
+.btn {
+  @include button-base;
+
+  &--primary {
+    background: $primaryBg;
+    color: $white;
+    border-color: $primary;
+
+    &:hover:not(:disabled) {
+      background: $primary;
+    }
+  }
+
+  &--danger {
+    background: $dangerBg;
+    border-color: $danger;
+
+    &:hover:not(:disabled) {
+      background: $danger;
+      color: $white;
+    }
+  }
+
+  &--add {
+    position: fixed;
+    bottom: $spacing-xl;
+    right: var(--vertical-offset);
+    padding: $spacing-lg 50px;
+    z-index: $z-index-fixed;
+  }
+
+  &--back {
+    background: transparent;
+    border-color: $border;
+    padding: $spacing-sm $spacing-lg;
+    border-radius: $radius-sm;
+    color: $text;
+
+    &:hover:not(:disabled) {
+      background: rgba($white, $opacity-hover);
+    }
+  }
+}
+
+.iconBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: $radius-sm;
+  border: 1px solid rgba($white, $opacity-border-light);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  @include flex-center;
+  transition: all $transition-base;
+
+  &:hover {
+    background: rgba($white, $opacity-hover);
+  }
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba($black, $opacity-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-lg;
+  z-index: $z-index-modal;
+}
+
+.modal {
+  width: 100%;
+  max-width: 500px;
+  border-radius: $radius-lg;
+  border: 1px solid rgba($white, $opacity-border-light);
+  background: $bg;
+  box-shadow: $shadow-xl;
+  overflow: hidden;
+
+  &__header {
+    padding: $spacing-md;
+    border-bottom: 1px solid $border;
+    @include flex-between;
+  }
+
+  &__title {
+    font-weight: $font-weight-bold;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-sm;
+    margin-top: $spacing-xs;
+  }
+}
+
+.form {
+  padding: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  font-size: $font-size-sm;
+  opacity: $opacity-high;
+}
+
+.input {
+  @include input-base;
+  resize: vertical;
+
+  // если тип input number, то скрываем стрелки увеличения и уменьшения
+  &[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+}
+
+.input-file {
+  display: none;
+}
+
+.photo-label {
+  display: inline-block;
+  cursor: pointer;
+  border: 1px dashed $border;
+  border-radius: $radius-md;
+  padding: $spacing-sm;
+  width: 150px;
+  height: 150px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background-color: $panel;
+  transition: background-color $transition-base;
+
+  &:hover {
+    background-color: rgba($black, $opacity-hover);
+  }
+}
+
+.photo-placeholder {
+  color: $text;
+  font-size: $font-size-xs;
+  @include flex-center;
+  height: 100%;
+}
+
+.photo-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: $radius-md;
+}
+

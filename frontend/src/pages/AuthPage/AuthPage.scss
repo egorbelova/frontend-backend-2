@@ -1,0 +1,72 @@
+@use '../../variables.scss' as *;
+
+.authWrap {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 var(--vertical-offset);
+}
+
+.authCard {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.authCard__header {
+  padding: 14px 16px;
+  border-bottom: 1px solid $border;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.authCard__title {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.authForm {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.authActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.authHint {
+  margin-top: 14px;
+  opacity: 0.85;
+
+  a {
+    color: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.alert {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.10);
+}
+
+@media (max-width: 520px) {
+  .authCard__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+

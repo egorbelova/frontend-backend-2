@@ -249,6 +249,8 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
  *   post:
  *     summary: Создать товар
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -279,7 +281,7 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
  *       400:
  *         description: Некорректные данные
  */
-app.post('/api/products', (req, res) => {
+app.post('/api/products', requireAuth, (req, res) => {
   const { title, category, description, price } = req.body;
   if (
     title === undefined ||
@@ -322,8 +324,6 @@ app.get('/api/products', (req, res) => {
  *   get:
  *     summary: Получить товар по id
  *     tags: [Products]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -336,7 +336,7 @@ app.get('/api/products', (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.get('/api/products/:id', requireAuth, (req, res) => {
+app.get('/api/products/:id', (req, res) => {
   const product = findProductById(req.params.id, res);
   if (!product) return;
   res.status(200).json(product);

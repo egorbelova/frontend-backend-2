@@ -1,0 +1,64 @@
+@use '../variables.scss' as *;
+
+@mixin container($max-width: null) {
+  width: 100%;
+  // max-width опционален и может быть передан как параметр
+  @if $max-width {
+    max-width: $max-width;
+  }
+  margin: 0 auto;
+}
+
+@mixin card($radius: $radius-md) {
+  border-radius: $radius;
+  cursor: pointer;
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin button-base {
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-lg;
+  border: 1px solid rgba($white, $opacity-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: $font-weight-semibold;
+  font-family: inherit;
+  transition: all $transition-base;
+  outline: none;
+
+  &:hover:not(:disabled) {
+    opacity: $opacity-high;
+  }
+
+  &:disabled {
+    opacity: $opacity-low;
+    cursor: not-allowed;
+  }
+}
+
+@mixin input-base {
+  padding: $spacing-md $spacing-md;
+  border-radius: $radius-md;
+  border: 1px solid rgba($black, 0.5);
+  background: rgba($white, 0.04);
+  color: inherit;
+  outline: none;
+  font-family: inherit;
+  transition: border-color $transition-base;
+
+  &:focus {
+    border-color: $primary;
+  }
+}
