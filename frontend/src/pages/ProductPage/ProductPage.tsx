@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ProductPage.scss';
-import { api, authStorage, type Product } from '../../api';
+import { api, type Product } from '../../api';
 import ProductModal from '../../components/ProductModal';
 import Footer from '../../components/Footer';
 import type { UpdateProductDto } from '../../api';
+import { useAuth } from '../../auth/AuthContext';
 
 export default function ProductPage() {
+  const auth = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedImage, setSelectedImage] = useState<string>('');
-  const isAuthed = !!authStorage.getToken();
 
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -51,15 +52,19 @@ export default function ProductPage() {
       setSelectedImage(data.photo);
     } catch (err) {
       console.error('Error loading product:', err);
-      navigate('/');
+      navigate('/', { state: { openAuth: 'login' as const } });
     } finally {
       setLoading(false);
     }
   };
 
   const handleEdit = () => {
-    if (!isAuthed) {
+    if (!auth.user) {
       navigate('/', { state: { openAuth: 'login' as const } });
+      return;
+    }
+    if (auth.user.role !== 'seller' && auth.user.role !== 'admin') {
+      alert('Only seller/admin can edit products');
       return;
     }
     setModalOpen(true);
@@ -67,8 +72,12 @@ export default function ProductPage() {
 
   const handleDelete = async () => {
     if (!product) return;
-    if (!isAuthed) {
+    if (!auth.user) {
       navigate('/', { state: { openAuth: 'login' as const } });
+      return;
+    }
+    if (auth.user.role !== 'admin') {
+      alert('Only admin can delete products');
       return;
     }
 
@@ -116,7 +125,7 @@ export default function ProductPage() {
         <div className='header__inner'>
           <div className='brand'>Clothes Store</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {!isAuthed && (
+            {!auth.user && (
               <>
                 <button
                   className='btn'
@@ -181,14 +190,18 @@ export default function ProductPage() {
               </div>
 
               <div className='product-actions'>
-                {isAuthed ? (
+                {auth.user ? (
                   <>
-                    <button className='btn btn--primary' onClick={handleEdit}>
-                      Edit Product
-                    </button>
-                    <button className='btn btn--danger' onClick={handleDelete}>
-                      Delete Product
-                    </button>
+                    {(auth.user.role === 'seller' || auth.user.role === 'admin') && (
+                      <button className='btn btn--primary' onClick={handleEdit}>
+                        Edit Product
+                      </button>
+                    )}
+                    {auth.user.role === 'admin' && (
+                      <button className='btn btn--danger' onClick={handleDelete}>
+                        Delete Product
+                      </button>
+                    )}
                   </>
                 ) : null}
               </div>

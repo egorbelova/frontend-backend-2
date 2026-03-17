@@ -13,7 +13,21 @@ export interface Product {
 
 export interface LoginResponse {
   accessToken: string;
+  refreshToken?: string;
 }
+
+export type Role = 'user' | 'seller' | 'admin';
+
+export interface MeResponse {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: Role;
+  blocked?: boolean;
+}
+
+export interface User extends MeResponse {}
 
 export type CreateProductDto = Omit<Product, 'id'>;
 export type UpdateProductDto = Partial<CreateProductDto>;
@@ -68,6 +82,11 @@ apiClient.interceptors.response.use(
       originalRequest &&
       !originalRequest._retry
     ) {
+      // If there's no access token at all, we are a "guest" — don't try refresh.
+      if (!authStorage.getToken()) {
+        return Promise.reject(error);
+      }
+
       if (originalRequest.url?.includes('/auth/refresh')) {
         authStorage.clearToken();
         return Promise.reject(error);
@@ -90,8 +109,8 @@ apiClient.interceptors.response.use(
   },
 );
 
-async function refreshTokens(): Promise<{ accessToken: string }> {
-  const { data } = await axios.post<{ accessToken: string }>(
+async function refreshTokens(): Promise<{ accessToken: string; refreshToken?: string }> {
+  const { data } = await axios.post<{ accessToken: string; refreshToken?: string }>(
     '/api/auth/refresh',
     {},
     {
@@ -114,22 +133,20 @@ export const api = {
     password: string;
     first_name: string;
     last_name: string;
+    role?: Role;
   }): Promise<{
     id: string;
     email: string;
     first_name: string;
     last_name: string;
+    role?: Role;
+    blocked?: boolean;
   }> => {
     const response = await apiClient.post('/auth/register', payload);
     return response.data;
   },
 
-  me: async (): Promise<{
-    id: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-  }> => {
+  me: async (): Promise<MeResponse> => {
     const response = await apiClient.get('/auth/me');
     return response.data;
   },
@@ -177,11 +194,32 @@ export const api = {
     id: string,
     product: UpdateProductDto,
   ): Promise<Product> => {
-    const response = await apiClient.patch(`/products/${id}`, product);
+    const response = await apiClient.put(`/products/${id}`, product);
     return response.data;
   },
 
   deleteProduct: async (id: string): Promise<void> => {
     await apiClient.delete(`/products/${id}`);
+  },
+
+  // admin only
+  getUsers: async (): Promise<User[]> => {
+    const response = await apiClient.get('/users');
+    return response.data;
+  },
+
+  getUserById: async (id: string): Promise<User> => {
+    const response = await apiClient.get(`/users/${id}`);
+    return response.data;
+  },
+
+  updateUser: async (id: string, patch: Partial<User> & { password?: string }): Promise<User> => {
+    const response = await apiClient.put(`/users/${id}`, patch);
+    return response.data;
+  },
+
+  blockUser: async (id: string): Promise<User> => {
+    const response = await apiClient.delete(`/users/${id}`);
+    return response.data;
   },
 };

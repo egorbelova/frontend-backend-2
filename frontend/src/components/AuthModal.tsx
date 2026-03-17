@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api, authStorage } from '../api';
+import { useAuth } from '../auth/AuthContext';
 import './AuthModal.scss';
 
 export type AuthModalMode = 'login' | 'register';
@@ -17,6 +17,7 @@ export default function AuthModal({
   onClose,
   onSuccess,
 }: AuthModalProps) {
+  const auth = useAuth();
   const [mode, setMode] = useState<AuthModalMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,8 +44,7 @@ export default function AuthModal({
     setError(null);
     setLoading(true);
     try {
-      const res = await api.login(email.trim(), password);
-      authStorage.setToken(res.accessToken);
+      await auth.login(email.trim(), password);
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -60,14 +60,12 @@ export default function AuthModal({
     setError(null);
     setLoading(true);
     try {
-      await api.register({
+      await auth.register({
         email: email.trim(),
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
       });
-      const res = await api.login(email.trim(), password);
-      authStorage.setToken(res.accessToken);
       onSuccess?.();
       onClose();
     } catch (err) {

@@ -1,0 +1,60 @@
+.adminProductsPage {
+  .adminProductsTable {
+    margin-top: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+
+    &__head,
+    &__row {
+      display: grid;
+      grid-template-columns: 2.2fr 1.1fr 0.6fr 0.6fr 1.5fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+    }
+
+    &__head {
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    &__row {
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    &__product {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    &__thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.2);
+      flex: 0 0 auto;
+    }
+
+    &__name {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 420px;
+    }
+
+    &__id {
+      opacity: 0.75;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+        'Courier New', monospace;
+    }
+  }
+}
+

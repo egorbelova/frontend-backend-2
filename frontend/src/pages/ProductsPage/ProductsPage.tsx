@@ -4,18 +4,19 @@ import './ProductsPage.scss';
 import ProductList from '../../components/ProductList';
 import ProductModal from '../../components/ProductModal';
 import AuthModal, { type AuthModalMode } from '../../components/AuthModal';
-import { api, authStorage, type Product, type CreateProductDto } from '../../api';
+import { api, type Product, type CreateProductDto } from '../../api';
 import Footer from '../../components/Footer';
+import { useAuth } from '../../auth/AuthContext';
 
 type ModalMode = 'create' | 'edit';
 
 export default function ProductsPage() {
+  const auth = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [isAuthed, setIsAuthed] = useState<boolean>(() => !!authStorage.getToken());
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('login');
   const location = useLocation();
@@ -31,32 +32,39 @@ export default function ProductsPage() {
   }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
+    if (auth.loading) return;
+    if (!auth.user) {
+      setAuthModalMode('login');
+      setAuthModalOpen(true);
+      setLoading(false);
+      return;
+    }
     loadProducts();
-  }, []);
-
-  useEffect(() => {
-    const onStorage = () => setIsAuthed(!!authStorage.getToken());
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.loading, auth.user?.id]);
 
   const loadProducts = async (): Promise<void> => {
     try {
       setLoading(true);
       const data = await api.getProducts();
-      console.log(data);
       setProducts(data);
     } catch (err) {
       console.error(err);
+      setAuthModalMode('login');
+      setAuthModalOpen(true);
     } finally {
       setLoading(false);
     }
   };
 
   const openCreate = (): void => {
-    if (!authStorage.getToken()) {
+    if (!auth.user) {
       setAuthModalMode('login');
       setAuthModalOpen(true);
+      return;
+    }
+    if (auth.user.role !== 'seller' && auth.user.role !== 'admin') {
+      alert('Only seller/admin can create products');
       return;
     }
     setModalMode('create');
@@ -97,16 +105,17 @@ export default function ProductsPage() {
         <div className='brand'>Clothes Store</div>
         <div className='header__inner'>
           <div className='header__right'>
-            {isAuthed ? (
-              <button
-                className='btn'
-                onClick={async () => {
-                  await api.logout();
-                  setIsAuthed(false);
-                }}
-              >
-                Logout
-              </button>
+            {auth.user ? (
+              <>
+                {auth.user.role === 'admin' ? (
+                  <button className='btn' onClick={() => navigate('/admin')}>
+                    Admin
+                  </button>
+                ) : null}
+                <button className='btn' onClick={() => auth.logout()}>
+                  Logout
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -134,7 +143,7 @@ export default function ProductsPage() {
       </header>
       <main className='main'>
         <div className='container'>
-          {isAuthed ? (
+          {auth.user && (auth.user.role === 'seller' || auth.user.role === 'admin') ? (
             <button className='btn btn--primary btn--add' onClick={openCreate}>
               + Add Product
             </button>
@@ -142,7 +151,7 @@ export default function ProductsPage() {
           <div className='toolbar'>
             <h1 className='title'>All Products</h1>
           </div>
-          {loading ? (
+          {auth.loading || loading ? (
             <div className='empty'>Loading...</div>
           ) : (
             <ProductList products={products} />
@@ -161,7 +170,10 @@ export default function ProductsPage() {
         open={authModalOpen}
         initialMode={authModalMode}
         onClose={() => setAuthModalOpen(false)}
-        onSuccess={() => setIsAuthed(true)}
+        onSuccess={async () => {
+          await auth.refreshMe();
+          await loadProducts();
+        }}
       />
     </div>
   );
