@@ -12,7 +12,6 @@ const swaggerUi = require('swagger-ui-express');
 const { products: initialProducts } = require('./data/products');
 let products = [...initialProducts];
 let users = [];
-// In-memory store for issued refresh tokens (practice-friendly).
 const refreshTokens = new Set();
 
 const app = express();
@@ -28,8 +27,8 @@ const REFRESH_EXPIRES_IN = process.env.REFRESH_EXPIRES_IN || '7d';
 
 const BASE_URL = `http://localhost:${port}`;
 
-// Default admin (created on every fresh start if missing)
-const DEFAULT_ADMIN_EMAIL = process.env.DEFAULT_ADMIN_EMAIL || 'admin@example.com';
+const DEFAULT_ADMIN_EMAIL =
+  process.env.DEFAULT_ADMIN_EMAIL || 'admin@example.com';
 const DEFAULT_ADMIN_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123';
 
 // настройка хранилища для загружаемых файлов
@@ -162,15 +161,23 @@ function requireAuth(req, res, next) {
 }
 
 function generateAccessToken(user) {
-  return jwt.sign({ sub: user.id, email: user.email, role: user.role }, ACCESS_SECRET, {
-    expiresIn: ACCESS_EXPIRES_IN,
-  });
+  return jwt.sign(
+    { sub: user.id, email: user.email, role: user.role },
+    ACCESS_SECRET,
+    {
+      expiresIn: ACCESS_EXPIRES_IN,
+    },
+  );
 }
 
 function generateRefreshToken(user) {
-  return jwt.sign({ sub: user.id, email: user.email, role: user.role }, REFRESH_SECRET, {
-    expiresIn: REFRESH_EXPIRES_IN,
-  });
+  return jwt.sign(
+    { sub: user.id, email: user.email, role: user.role },
+    REFRESH_SECRET,
+    {
+      expiresIn: REFRESH_EXPIRES_IN,
+    },
+  );
 }
 
 function extractRefreshTokenFromHeaders(req) {
@@ -374,7 +381,9 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(409).json({ error: 'email already registered' });
   }
   if (role !== undefined) {
-    return res.status(400).json({ error: 'role cannot be set during registration' });
+    return res
+      .status(400)
+      .json({ error: 'role cannot be set during registration' });
   }
 
   const newUser = {
@@ -472,7 +481,9 @@ app.post('/api/auth/refresh', (req, res) => {
   const refreshToken =
     req.cookies?.[REFRESH_COOKIE_NAME] ?? extractRefreshTokenFromHeaders(req);
   if (!refreshToken) {
-    return res.status(400).json({ error: 'refreshToken is required (cookie or header)' });
+    return res
+      .status(400)
+      .json({ error: 'refreshToken is required (cookie or header)' });
   }
 
   if (!refreshTokens.has(refreshToken)) {
@@ -490,7 +501,9 @@ app.post('/api/auth/refresh', (req, res) => {
     const newRefreshToken = generateRefreshToken(user);
     refreshTokens.add(newRefreshToken);
     setRefreshCookie(res, newRefreshToken);
-    return res.status(200).json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    return res
+      .status(200)
+      .json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {
     refreshTokens.delete(refreshToken);
     return res.status(401).json({ error: 'Invalid or expired refresh token' });
@@ -570,11 +583,16 @@ app.get('/api/users', requireAuth, roleMiddleware(['admin']), (req, res) => {
  *       403: { description: Forbidden (только admin) }
  *       404: { description: user not found }
  */
-app.get('/api/users/:id', requireAuth, roleMiddleware(['admin']), (req, res) => {
-  const user = users.find((u) => u.id === req.params.id);
-  if (!user) return res.status(404).json({ error: 'user not found' });
-  res.status(200).json(publicUser(user));
-});
+app.get(
+  '/api/users/:id',
+  requireAuth,
+  roleMiddleware(['admin']),
+  (req, res) => {
+    const user = users.find((u) => u.id === req.params.id);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    res.status(200).json(publicUser(user));
+  },
+);
 
 /**
  * @swagger
@@ -614,44 +632,54 @@ app.get('/api/users/:id', requireAuth, roleMiddleware(['admin']), (req, res) => 
  *       404: { description: user not found }
  *       409: { description: email already registered }
  */
-app.put('/api/users/:id', requireAuth, roleMiddleware(['admin']), async (req, res) => {
-  const user = users.find((u) => u.id === req.params.id);
-  if (!user) return res.status(404).json({ error: 'user not found' });
+app.put(
+  '/api/users/:id',
+  requireAuth,
+  roleMiddleware(['admin']),
+  async (req, res) => {
+    const user = users.find((u) => u.id === req.params.id);
+    if (!user) return res.status(404).json({ error: 'user not found' });
 
-  const { email, first_name, last_name, role, password, blocked } = req.body ?? {};
+    const { email, first_name, last_name, role, password, blocked } =
+      req.body ?? {};
 
-  if (email !== undefined) {
-    const trimmed = String(email).trim();
-    if (!trimmed) return res.status(400).json({ error: 'email cannot be empty' });
-    const taken = users.some((u) => u.email === trimmed && u.id !== user.id);
-    if (taken) return res.status(409).json({ error: 'email already registered' });
-    user.email = trimmed;
-  }
-  if (first_name !== undefined) user.first_name = String(first_name).trim();
-  if (last_name !== undefined) user.last_name = String(last_name).trim();
-
-  if (role !== undefined) {
-    const roleCheck = validateRole(role);
-    if (!roleCheck.ok) return res.status(400).json({ error: roleCheck.message });
-    user.role = role;
-  }
-
-  if (blocked !== undefined) {
-    const nextBlocked = Boolean(blocked);
-    if (user.id === req.user.sub && nextBlocked) {
-      return res.status(400).json({ error: 'admin cannot block themselves' });
+    if (email !== undefined) {
+      const trimmed = String(email).trim();
+      if (!trimmed)
+        return res.status(400).json({ error: 'email cannot be empty' });
+      const taken = users.some((u) => u.email === trimmed && u.id !== user.id);
+      if (taken)
+        return res.status(409).json({ error: 'email already registered' });
+      user.email = trimmed;
     }
-    user.blocked = nextBlocked;
-  }
+    if (first_name !== undefined) user.first_name = String(first_name).trim();
+    if (last_name !== undefined) user.last_name = String(last_name).trim();
 
-  if (password !== undefined) {
-    const pwd = String(password);
-    if (!pwd) return res.status(400).json({ error: 'password cannot be empty' });
-    user.hashedPassword = await hashPassword(pwd);
-  }
+    if (role !== undefined) {
+      const roleCheck = validateRole(role);
+      if (!roleCheck.ok)
+        return res.status(400).json({ error: roleCheck.message });
+      user.role = role;
+    }
 
-  res.status(200).json(publicUser(user));
-});
+    if (blocked !== undefined) {
+      const nextBlocked = Boolean(blocked);
+      if (user.id === req.user.sub && nextBlocked) {
+        return res.status(400).json({ error: 'admin cannot block themselves' });
+      }
+      user.blocked = nextBlocked;
+    }
+
+    if (password !== undefined) {
+      const pwd = String(password);
+      if (!pwd)
+        return res.status(400).json({ error: 'password cannot be empty' });
+      user.hashedPassword = await hashPassword(pwd);
+    }
+
+    res.status(200).json(publicUser(user));
+  },
+);
 
 /**
  * @swagger
@@ -678,15 +706,20 @@ app.put('/api/users/:id', requireAuth, roleMiddleware(['admin']), async (req, re
  *       404: { description: user not found }
  */
 // Block user (soft-delete)
-app.delete('/api/users/:id', requireAuth, roleMiddleware(['admin']), (req, res) => {
-  const user = users.find((u) => u.id === req.params.id);
-  if (!user) return res.status(404).json({ error: 'user not found' });
-  if (user.id === req.user.sub) {
-    return res.status(400).json({ error: 'admin cannot block themselves' });
-  }
-  user.blocked = true;
-  res.status(200).json(publicUser(user));
-});
+app.delete(
+  '/api/users/:id',
+  requireAuth,
+  roleMiddleware(['admin']),
+  (req, res) => {
+    const user = users.find((u) => u.id === req.params.id);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    if (user.id === req.user.sub) {
+      return res.status(400).json({ error: 'admin cannot block themselves' });
+    }
+    user.blocked = true;
+    res.status(200).json(publicUser(user));
+  },
+);
 
 /**
  * @swagger
@@ -773,31 +806,36 @@ app.post('/api/upload', requireAuth, upload.single('photo'), (req, res) => {
  *       400:
  *         description: Ошибка в теле запроса (не все поля указаны)
  */
-app.post('/api/products', requireAuth, roleMiddleware(['seller', 'admin']), (req, res) => {
-  const { name, category, description, price, stock, photo } = req.body;
-  if (
-    !name ||
-    !category ||
-    !description ||
-    price === undefined ||
-    stock === undefined
-  ) {
-    return res.status(400).json({ error: 'All fields are required' });
-  }
+app.post(
+  '/api/products',
+  requireAuth,
+  roleMiddleware(['seller', 'admin']),
+  (req, res) => {
+    const { name, category, description, price, stock, photo } = req.body;
+    if (
+      !name ||
+      !category ||
+      !description ||
+      price === undefined ||
+      stock === undefined
+    ) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
 
-  const newProduct = {
-    id: nanoid(6),
-    name: name?.trim(),
-    category: category?.trim(),
-    description: description?.trim(),
-    price: Number(price),
-    stock: Number(stock),
-    photo: photo || '/images/placeholder.svg',
-  };
+    const newProduct = {
+      id: nanoid(6),
+      name: name?.trim(),
+      category: category?.trim(),
+      description: description?.trim(),
+      price: Number(price),
+      stock: Number(stock),
+      photo: photo || '/images/placeholder.svg',
+    };
 
-  products.push(newProduct);
-  res.status(201).json(processProduct(newProduct));
-});
+    products.push(newProduct);
+    res.status(201).json(processProduct(newProduct));
+  },
+);
 
 /**
  * @swagger
@@ -817,9 +855,14 @@ app.post('/api/products', requireAuth, roleMiddleware(['seller', 'admin']), (req
  *               items:
  *                 $ref: '#/components/schemas/Product'
  */
-app.get('/api/products', requireAuth, roleMiddleware(['user', 'seller', 'admin']), (req, res) => {
-  res.json(processProducts(products));
-});
+app.get(
+  '/api/products',
+  requireAuth,
+  roleMiddleware(['user', 'seller', 'admin']),
+  (req, res) => {
+    res.json(processProducts(products));
+  },
+);
 
 /**
  * @swagger
@@ -851,10 +894,10 @@ app.get(
   requireAuth,
   roleMiddleware(['user', 'seller', 'admin']),
   (req, res) => {
-  const product = findProductOr404(req.params.id, res);
-  if (product) {
-    res.json(processProduct(product));
-  }
+    const product = findProductOr404(req.params.id, res);
+    if (product) {
+      res.json(processProduct(product));
+    }
   },
 );
 
@@ -992,13 +1035,18 @@ app.patch(
  *       404:
  *         description: Товар не найден
  */
-app.delete('/api/products/:id', requireAuth, roleMiddleware(['admin']), (req, res) => {
-  const exists = products.some((p) => p.id === req.params.id);
-  if (!exists) return res.status(404).json({ error: 'Product not found' });
+app.delete(
+  '/api/products/:id',
+  requireAuth,
+  roleMiddleware(['admin']),
+  (req, res) => {
+    const exists = products.some((p) => p.id === req.params.id);
+    if (!exists) return res.status(404).json({ error: 'Product not found' });
 
-  products = products.filter((p) => p.id !== req.params.id);
-  res.status(204).send();
-});
+    products = products.filter((p) => p.id !== req.params.id);
+    res.status(204).send();
+  },
+);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
